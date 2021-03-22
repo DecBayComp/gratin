@@ -1,0 +1,38 @@
+version: "3.3"
+
+services: 
+  gratin:
+    image: hverdier/dbc_projects:gratin
+    command: sh -c "jupyter lab --no-browser --port 8888 --ip 0.0.0.0 --allow-root --NotebookApp.token='dbc'"
+    ports: 
+      - "8888:8888"
+    working_dir: /gratin_exp
+    shm_size: '4gb'
+    cpu_count: 10
+    volumes: 
+      - type: bind
+        source: /home/hverdier/gratin
+        target: /gratin
+      - type: bind
+        source: /home/hverdier/gratin_exp
+        target: /gratin_exp
+      - type: bind
+        source: /home/hverdier/Gaia/Dbc/andi-data
+        target: /gaia
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+  
+  TB:
+    image: activeeon/tensorflow
+    command: sh -c "tensorboard --logdir=/gaia/tb_logs --host=0.0.0.0 --port=6006"
+    volumes: 
+      - type: bind
+        source: /home/hverdier/Gaia/Dbc/andi-data
+        target: /gaia
+    ports: 
+      - "6006:6006"
