@@ -1,1 +1,2 @@
-# Unsupervised analysis of random walk
+# GRATIN
+Graphs on Trajectories for Inference

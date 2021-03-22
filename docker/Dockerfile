@@ -24,7 +24,7 @@ RUN Docker/install_jax.sh
 
 RUN rm -r Docker
 
-WORKDIR /alpha-graph
+WORKDIR /gratin
 
 #COPY . .
 
