@@ -18,8 +18,11 @@ EMPTY_FIELD_VALUE = -999
 
 
 class SimpleTrajData(Data):
-    def __init__(self, raw_positions, graph_info={}, traj_info={}):
-
+    def __init__(
+        self, raw_positions, graph_info={}, traj_info={}, original_positions=None
+    ):
+        if original_positions is None:
+            original_positions = raw_positions
         dim = raw_positions.shape[1]
         default_traj_info = {
             "model": "unknown",
@@ -48,6 +51,7 @@ class SimpleTrajData(Data):
 
         super(SimpleTrajData, self).__init__(
             pos=torch.from_numpy(positions).float(),
+            original_pos=torch.from_numpy(original_positions).float(),
             clipped_steps=float_to_torch(clipped_steps),
             x=torch.from_numpy(X).float(),
             edge_index=edge_index,
@@ -169,8 +173,7 @@ class TrajDataSet(Dataset):
     def len(self):
         return self.N
 
-    def get_traj(self, seed):
-
+    def get_raw_traj(self, seed):
         np.random.seed(seed)
 
         model_index = np.random.choice(len(self.model_types))
@@ -178,6 +181,12 @@ class TrajDataSet(Dataset):
         params = params_sampler(model, seed=seed)
         length = np.random.randint(low=self.length_range[0], high=self.length_range[1])
         raw_pos = self.generators[model](T=length, **params)
+        return raw_pos, params, length, model, model_index
+
+    def get_traj(self, seed):
+
+        raw_pos, params, length, model, model_index = self.get_raw_traj(seed)
+
         if (self.drift_range[1] <= 0.0) or (
             model in ["OU", "BM"] and np.random.uniform() < 0.5
         ):
@@ -193,7 +202,7 @@ class TrajDataSet(Dataset):
             )
             drift_norm = np.linalg.norm(drift_vec)
         else:
-            # Dans ce cas, ça ne fait pas sens d'ajouter du bruit
+            # Dans ce cas, ça ne fait pas sens d'ajouter du drift
             drifted_pos, drift_vec = (
                 raw_pos,
                 EMPTY_FIELD_VALUE * np.ones(raw_pos.shape[1]),
@@ -213,6 +222,7 @@ class TrajDataSet(Dataset):
             length,
             noise_factor,
             noisy_pos,
+            raw_pos,
             params,
         )
 
@@ -228,6 +238,7 @@ class TrajDataSet(Dataset):
                 length,
                 noise_factor,
                 noisy_pos,
+                raw_pos,
                 params,
             ) = self.get_traj(i)
             ax = fig.add_subplot(10, 10, i + 1)
@@ -251,7 +262,7 @@ class TrajDataSet(Dataset):
         #    print("Train index %d" % idx)
         # else:
         #    print("Test index %d" % idx)
-
+        seed = idx + self.seed_offset
         (
             model,
             model_index,
@@ -260,8 +271,9 @@ class TrajDataSet(Dataset):
             length,
             noise_factor,
             noisy_pos,
+            raw_pos,
             params,
-        ) = self.get_traj(seed=idx + self.seed_offset)
+        ) = self.get_traj(seed=seed)
 
         traj_info = params
         traj_info.update(
@@ -271,11 +283,15 @@ class TrajDataSet(Dataset):
                 "drift_vec": drift_vec,
                 "drift_norm": drift_norm,
                 "length": length,
-                "noise_factor": noise_factor,
+                "noise": noise_factor,
+                "seed": seed,
             }
         )
         return SimpleTrajData(
-            noisy_pos, graph_info=self.graph_info, traj_info=traj_info
+            noisy_pos,
+            graph_info=self.graph_info,
+            traj_info=traj_info,
+            original_positions=raw_pos,
         )
 
 

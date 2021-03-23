@@ -676,6 +676,7 @@ generators = {
         "ATTM": diffusion_models().oneD().attm,
         "CTRW": diffusion_models().oneD().ctrw,
         "fBM": diffusion_models().oneD().fbm,
+        "fBM_fullrange": diffusion_models().oneD().fbm,
         "fBM_jax": partial(get_fbm, D=1),
         "LW": diffusion_models().oneD().lw,
         "sBM": diffusion_models().oneD().sbm,
@@ -707,15 +708,13 @@ def params_sampler(model, seed=0):
     if model == "CTRW":
         return {"alpha": np.random.uniform(0.05, 1)}
     elif model == "LW":
-        return {"alpha": np.random.uniform(1.0, 1.9)}
+        return {"alpha": np.random.uniform(1.0, 2.0)}
     elif model == "fBM":
-        # return {
-        #    "alpha": np.random.uniform(0.1, 1.9),
-        #    "key": jax.random.PRNGKey(seed),
-        # }
+        return {"alpha": np.random.uniform(0.05, 1.95)}
+    elif model == "fBM_fullrange":
         return {"alpha": np.random.uniform(0.01, 1.99)}
     elif model == "sBM":
-        return {"alpha": np.random.uniform(0.1, 1.9)}
+        return {"alpha": np.random.uniform(0.1, 2.0)}
     elif model == "OU":
         # log(Theta) = 2.5
         # La courbe du MSD se sépare de celle du BM à 10 pas

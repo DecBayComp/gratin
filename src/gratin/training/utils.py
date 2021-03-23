@@ -5,7 +5,7 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
 )
-from .callbacks import LatentSpaceSaver
+from .callbacks import LatentSpaceSaver, Plotter
 from ..models.network_lightning import MainNet
 from ..data.data_classes import DataModule
 
@@ -23,7 +23,7 @@ def setup_model_and_dm(tasks, ds_params, net_params, dl_params, graph_info):
 
 def setup_trainer(logger, dirpath="/gaia/models", tag="default"):
     ES = EarlyStopping(
-        monitor="val_loss",
+        monitor="train_loss",  # We do not care about overfitting, train loss is more stable than validation
         min_delta=0.001,
         patience=10,
         verbose=True,
@@ -35,6 +35,7 @@ def setup_trainer(logger, dirpath="/gaia/models", tag="default"):
         dirpath=dirpath, filename=tag, monitor="train_loss", verbose=True, mode="min"
     )
     LSS = LatentSpaceSaver()
+    PLT = Plotter()
 
     trainer = pl.Trainer(
         auto_lr_find=False,
@@ -43,7 +44,7 @@ def setup_trainer(logger, dirpath="/gaia/models", tag="default"):
         gradient_clip_val=1.0,
         log_gpu_memory="min_max",
         reload_dataloaders_every_epoch=True,
-        callbacks=[ES, LRM, CKPT, LSS],
+        callbacks=[ES, LRM, CKPT, LSS, PLT],
         accelerator="ddp" if torch.cuda.is_available() else "ddp_cpu",
         log_every_n_steps=150,
         flush_logs_every_n_steps=300,
